@@ -1,33 +1,39 @@
 'use strict';
 
-var mongoose = require('mongoose');
-var bcrypt = require('bcrypt-nodejs');
+var eatAuth = require('../lib/eat_auth')(process.env.APP_SECRET);
 var bodyparser = require('body-parser');
+var bcrypt = require('bcrypt-nodejs');
 var User = require('../models/User');
+var mongoose = require('mongoose');
 
 module.exports = function(router, passport) {
 	router.use(bodyparser.json());
 
 	router.post('/create_user', function(req, res) {
+
 		var newUserData = JSON.parse(JSON.stringify(req.body));
 		delete newUserData.email;
 		delete newUserData.password;
+		newUserData.basic = {};
+		newUserData.email = req.body.email;
 		var newUser = new User(newUserData);
-		newUser.basic.email = req.body.email;
-		newUser.basic.password = newUser.generateHash(req.body.password);
-		newUser.save(function(err, user) {
-			if(err) {
-				console.log(err);
-				res.status(500).json({msg: 'could not create user'});
-			}
 
-			user.generateToken(process.env.APP_SECRET, function(err, token){
+		newUser.generateHash(req.body.password, function(hash) {
+			newUser.basic.password = hash;
+			newUser.save(function(err, user) {
 				if(err) {
 					console.log(err);
-					return res.status(500).json({msg: 'err generating token'});
+					return res.status(500).json({msg: 'email in use'});
 				}
 
-				res.json({token: token});
+				user.generateToken(process.env.APP_SECRET, function(err, token){
+					if(err) {
+						console.log(err);
+						return res.status(500).json({msg: 'err generating token'});
+					}
+
+					res.json({token: token});
+				});
 			});
 		});
 	});
@@ -40,6 +46,17 @@ module.exports = function(router, passport) {
 			}
 
 			res.json({token: token});
+		});
+	});
+
+	router.get('/sign_out/:eat', eatAuth, function(req, res) {
+		req.user.owns(function(err, check) {
+			if(err) {
+				console.log(err);
+				return res.status(500).json({msg: 'internal server error'});
+			}
+
+			res.json({msg: 'successfully signed out'});
 		});
 	});
 };
