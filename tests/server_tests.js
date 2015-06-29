@@ -29,7 +29,7 @@ describe('Auth', function() {
       });
     });
   });
-  
+
 	afterEach(function() {
 		mongoose.connection.db.dropDatabase(function() {});
 	});
@@ -74,23 +74,4 @@ describe('Auth', function() {
     });
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
